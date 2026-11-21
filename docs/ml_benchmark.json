@@ -1,0 +1,233 @@
+{
+  "train_rows": 8046,
+  "test_rows": 1954,
+  "threshold": 0.5,
+  "pca_k": 32,
+  "pca_explained_variance": 0.7419,
+  "num_trees": 60,
+  "max_depth": 12,
+  "fit_seconds": 28.3,
+  "inference_seconds_test": 1.2,
+  "rules_only": {
+    "tp": 1002,
+    "fp": 17,
+    "tn": 487,
+    "fn": 448,
+    "precision": 0.9833,
+    "recall": 0.691,
+    "f1": 0.8117,
+    "accuracy": 0.762,
+    "fpr": 0.0337
+  },
+  "ml_only": {
+    "tp": 1448,
+    "fp": 9,
+    "tn": 495,
+    "fn": 2,
+    "precision": 0.9938,
+    "recall": 0.9986,
+    "f1": 0.9962,
+    "accuracy": 0.9944,
+    "fpr": 0.0179
+  },
+  "hybrid": {
+    "tp": 1448,
+    "fp": 26,
+    "tn": 478,
+    "fn": 2,
+    "precision": 0.9824,
+    "recall": 0.9986,
+    "f1": 0.9904,
+    "accuracy": 0.9857,
+    "fpr": 0.0516
+  },
+  "per_attack_recall": {
+    "rules_only": {
+      "DoS GoldenEye": {
+        "n": 182,
+        "detected": 143,
+        "recall": 0.7857
+      },
+      "Infiltration": {
+        "n": 146,
+        "detected": 0,
+        "recall": 0.0
+      },
+      "DoS Hulk": {
+        "n": 374,
+        "detected": 309,
+        "recall": 0.8262
+      },
+      "DDoS": {
+        "n": 335,
+        "detected": 318,
+        "recall": 0.9493
+      },
+      "DoS slowloris": {
+        "n": 174,
+        "detected": 134,
+        "recall": 0.7701
+      },
+      "DoS Slowhttptest": {
+        "n": 99,
+        "detected": 85,
+        "recall": 0.8586
+      },
+      "Web Attack \u2013 XSS": {
+        "n": 5,
+        "detected": 0,
+        "recall": 0.0
+      },
+      "Web Attack \u2013 Brute Force": {
+        "n": 17,
+        "detected": 0,
+        "recall": 0.0
+      },
+      "SSH-Patator": {
+        "n": 60,
+        "detected": 4,
+        "recall": 0.0667
+      },
+      "FTP-Patator": {
+        "n": 38,
+        "detected": 6,
+        "recall": 0.1579
+      },
+      "Heartbleed": {
+        "n": 15,
+        "detected": 3,
+        "recall": 0.2
+      },
+      "Bot": {
+        "n": 5,
+        "detected": 0,
+        "recall": 0.0
+      }
+    },
+    "ml_only": {
+      "DoS GoldenEye": {
+        "n": 182,
+        "detected": 182,
+        "recall": 1.0
+      },
+      "Infiltration": {
+        "n": 146,
+        "detected": 145,
+        "recall": 0.9932
+      },
+      "DoS Hulk": {
+        "n": 374,
+        "detected": 374,
+        "recall": 1.0
+      },
+      "DDoS": {
+        "n": 335,
+        "detected": 335,
+        "recall": 1.0
+      },
+      "DoS slowloris": {
+        "n": 174,
+        "detected": 174,
+        "recall": 1.0
+      },
+      "DoS Slowhttptest": {
+        "n": 99,
+        "detected": 99,
+        "recall": 1.0
+      },
+      "Web Attack \u2013 XSS": {
+        "n": 5,
+        "detected": 5,
+        "recall": 1.0
+      },
+      "Web Attack \u2013 Brute Force": {
+        "n": 17,
+        "detected": 17,
+        "recall": 1.0
+      },
+      "SSH-Patator": {
+        "n": 60,
+        "detected": 60,
+        "recall": 1.0
+      },
+      "FTP-Patator": {
+        "n": 38,
+        "detected": 38,
+        "recall": 1.0
+      },
+      "Heartbleed": {
+        "n": 15,
+        "detected": 15,
+        "recall": 1.0
+      },
+      "Bot": {
+        "n": 5,
+        "detected": 4,
+        "recall": 0.8
+      }
+    },
+    "hybrid": {
+      "DoS GoldenEye": {
+        "n": 182,
+        "detected": 182,
+        "recall": 1.0
+      },
+      "Infiltration": {
+        "n": 146,
+        "detected": 145,
+        "recall": 0.9932
+      },
+      "DoS Hulk": {
+        "n": 374,
+        "detected": 374,
+        "recall": 1.0
+      },
+      "DDoS": {
+        "n": 335,
+        "detected": 335,
+        "recall": 1.0
+      },
+      "DoS slowloris": {
+        "n": 174,
+        "detected": 174,
+        "recall": 1.0
+      },
+      "DoS Slowhttptest": {
+        "n": 99,
+        "detected": 99,
+        "recall": 1.0
+      },
+      "Web Attack \u2013 XSS": {
+        "n": 5,
+        "detected": 5,
+        "recall": 1.0
+      },
+      "Web Attack \u2013 Brute Force": {
+        "n": 17,
+        "detected": 17,
+        "recall": 1.0
+      },
+      "SSH-Patator": {
+        "n": 60,
+        "detected": 60,
+        "recall": 1.0
+      },
+      "FTP-Patator": {
+        "n": 38,
+        "detected": 38,
+        "recall": 1.0
+      },
+      "Heartbleed": {
+        "n": 15,
+        "detected": 15,
+        "recall": 1.0
+      },
+      "Bot": {
+        "n": 5,
+        "detected": 4,
+        "recall": 0.8
+      }
+    }
+  },
+  "note": "Held-out random split of the sample; label used for training target and evaluation only."
+}

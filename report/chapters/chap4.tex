@@ -1,0 +1,79 @@
+\chapter{SYSTEM DESIGN}
+
+\paragraph{}
+This chapter describes the data flow, the key algorithms, and the data model.
+
+\section{Architecture of the system}
+\paragraph{}
+The pipeline has three Lambda layers. The \emph{speed layer} is the Spark streaming job; the \emph{batch layer} is the Spark SQL job over the lake; the \emph{serving layer} is the sharded MongoDB read by the dashboard. Algorithm~\ref{alg:microbatch} is the heart of the speed layer.
+
+\begin{algorithm}[H]
+\caption{Processing one micro-batch (dual write)} \label{alg:microbatch}
+\begin{algorithmic}[1]
+\Require micro-batch $B$ of Kafka records, run identifier $r$, optional model $M$
+\Ensure alerts and metrics in MongoDB; all valid events in the lake
+\State $V \gets$ records of $B$ whose JSON parses (count the rest as malformed)
+\State compute payload statistics (entropy, mean, non-zero count) for each $v \in V$
+\For{each $v \in V$}
+  \State $rule(v) \gets$ metadata rules on (ttl, length, protocol, $\Delta t$)
+  \If{$M$ is given} $ml(v) \gets M(\text{PCA}_{32}(\text{payload}(v)))$ \Else\ $ml(v) \gets 0$ \EndIf
+  \State $pred(v) \gets rule(v)\ \lor\ ml(v)$ \Comment{label is never read here}
+\EndFor
+\State evaluate $pred$ against the ground-truth label (offline metrics only)
+\State upsert alerts $\{v : pred(v)=1\}$ into MongoDB with \texttt{\_id} = topic:partition:offset
+\State upsert batch metrics document \texttt{\_id} = $r$:batch\_id
+\State append all of $V$ to the Parquet lake partitioned by $(r, \text{protocol})$ \Comment{cold tier}
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{}
+Because both MongoDB writes are upserts by a deterministic identifier, re-processing a micro-batch after a restart is harmless (idempotence). Because the lake is written in the same micro-batch, the recovery point of the lake is zero events.
+
+\section{Recovery algorithms}
+\begin{algorithm}[H]
+\caption{Snapshot backup, verification and rotation} \label{alg:backup}
+\begin{algorithmic}[1]
+\State create directory named by UTC timestamp
+\State dump the database with \texttt{mongodump --gzip} (read preference: secondary where available)
+\State archive the checkpoint directory and the lake as \texttt{.tar.gz}
+\State write manifest: size and SHA-256 of every file, per-collection document counts
+\State verify: recompute digests, test archive integrity, \texttt{mongorestore --dryRun}; record result in manifest
+\State delete snapshots older than 7 days, always keeping the newest
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Rebuild MongoDB from the Parquet lake} \label{alg:lake}
+\begin{algorithmic}[1]
+\Require lake directory, run identifier $r$
+\State re-create the sharded layout (shard keys) in the empty database
+\For{each lake row with $predicted\_attack = 1$ in partition $run\_id = r$}
+  \State build the alert document with the same \texttt{\_id} the streaming sink produced
+  \State bulk upsert
+\EndFor
+\State re-aggregate one batch-metrics document per $(r, batch\_id)$ from verdicts and labels
+\State recompute rollups with the batch job
+\end{algorithmic}
+\end{algorithm}
+
+\section{Detector design}
+\paragraph{}
+\textbf{Rules} (metadata only): burst time-delta ($\le 50\,\mu$s) combined with suspicious TTL (61, 62 or below 32) or suspicious length (40, 48, 52, 60 or above 1500); invalid TTL or length alone also raises an alert. \textbf{ML}: the 1,500 payload bytes form a vector, PCA reduces it to 32 components, the components plus TTL, length, $\Delta t$ and a TCP flag feed a 60-tree Random Forest of depth 12. The hybrid alert is the OR of both. The label is only the training target and the offline evaluation column.
+
+\section{Data Set Description}
+\paragraph{}
+CIC-IDS2017 payload variant \cite{cicids}: 4.91\,GB CSV, 1,410,255 records, 1,505 columns (1,500 columns \texttt{payload\_byte\_}$N$ for $N=1\ldots1500$, plus \texttt{ttl}, \texttt{total\_len}, \texttt{protocol}, \texttt{t\_delta} and \texttt{label}); 1,048,147 attack records (74.32\%) and 362,108 benign (25.68\%).
+
+\section{Schema}
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3.7cm}|p{9.6cm}|}
+\hline
+\textbf{Store / collection} & \textbf{Content} \\ \hline
+\texttt{threat\_alerts} (sharded) & one document per alert: topic, partition, offset, protocol, ttl, length, $\Delta t$, reason, ground-truth label (evaluation only), run identifier \\ \hline
+\texttt{batch\_metrics} & per micro-batch counts, confusion matrix, precision, recall, F1, rule-only counts \\ \hline
+\texttt{historical\_threat\_rollups} (sharded) & batch views: tumbling and sliding windows, protocol summary, attack family, entropy histogram, TTL heat map, storage-format benchmark \\ \hline
+Parquet lake & \texttt{events/run\_id=*/protocol=*/}: metadata, verdicts, ML probability, payload entropy, mean and non-zero count \\ \hline
+\end{tabular}
+\caption{Data model}
+\end{table}

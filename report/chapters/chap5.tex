@@ -1,0 +1,41 @@
+\chapter{IMPLEMENTATION}
+
+\paragraph{}
+All code is Python 3.11 with PySpark; shell scripts start and operate the infrastructure. Table~\ref{tab:modules} lists the modules.
+
+\section{Proposed Methodology}
+\paragraph{}
+Development followed the Big Data analytics life cycle: acquire (Kafka), prepare (schema, corrupt-record capture), analyse (rules and MLlib), store (shards and lake), visualise (dashboard), and operate (backup and recovery). The original 33 tests were kept passing at every step and each new feature added its own tests.
+
+\section{Description of Modules}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{4.3cm}|p{9cm}|}
+\hline
+\textbf{Module} & \textbf{Role} \\ \hline
+\texttt{producer.py} & CSV replay; \texttt{--key-by flow|protocol|none}; \texttt{--include-payload} \\ \hline
+\texttt{spark\_consumer.py} & Structured Streaming job; rules, optional ML, dual write \\ \hline
+\texttt{ml\_payload\_detector.py} & PCA + Random Forest training, scoring, hybrid logic, benchmark \\ \hline
+\texttt{lake\_sink.py} & Parquet writer (Snappy, partitioned by run and protocol) \\ \hline
+\texttt{mongo\_sink.py} & Idempotent upserts to MongoDB (works unchanged through \texttt{mongos}) \\ \hline
+\texttt{batch\_analytics.py} & Spark SQL batch views into \texttt{historical\_threat\_rollups} \\ \hline
+\texttt{scripts/sharded\_cluster.sh}, \texttt{shard\_setup.py} & Start 7 \texttt{mongod} processes and a \texttt{mongos}; initiate replica sets; enable sharding and shard keys \\ \hline
+\texttt{scripts/backup\_manager.py} & Backup, verify, rotate, restore, status \\ \hline
+\texttt{scripts/lake\_recovery.py} & Rebuild alerts and metrics from the lake \\ \hline
+\texttt{scripts/data\_loss\_demo.py} & Runs the three data-loss scenarios \\ \hline
+\texttt{scripts/dr\_drill.py} & Backup, restore to a scratch database, compare counts, report RTO \\ \hline
+\texttt{dashboard.py} & Streamlit: alerts, evaluation, batch analytics, system health \\ \hline
+\end{tabular}
+\caption{Modules}\label{tab:modules}
+\end{table}
+
+\paragraph{Kafka scaling.} The topic has four partitions and the producer key is a hash of protocol, TTL, length and a sequence number. Keying by protocol alone would give only about three distinct keys and therefore hot partitions; the flow key spreads records evenly (measured 7,345 to 7,565 per partition).
+
+\paragraph{Resource-aware cluster.} Each \texttt{mongod} runs with a 0.25\,GB WiredTiger cache. An arbiter-based layout (two data copies plus an arbiter) was tried to save memory but stalled reads while one data node was down, so three data-bearing members are used per shard; all MongoDB processes together occupy about 1.2\,GB.
+
+\paragraph{Storage format.} The lake uses columnar Parquet with Snappy compression, the modern counterpart of RCFile studied in the course. For identical data the CSV was 3.7\,MB and Parquet 0.96\,MB (3.98$\times$ smaller), and a single-column scan took 0.137\,s against 1.544\,s.
+
+\paragraph{Batch layer.} Spark SQL computes tumbling windows (non-overlapping, exact) and sliding windows (overlapping, smoother) over \texttt{event\_time}, which is the Kafka ingestion time and therefore the replay clock. The dataset has no IP addresses, so a TTL-bucket heat map replaces a subnet heat map.
+
+\paragraph{Resilience of the code.} A single connection string (\texttt{MONGODB\_URI}) switches the pipeline between the standalone server and the cluster; settings resolve from Streamlit secrets, then environment, then localhost default. No credentials are stored in the repository.

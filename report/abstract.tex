@@ -1,0 +1,19 @@
+\chapter*{ABSTRACT}%
+\begin{justify}
+\addcontentsline{toc}{chapter}{ABSTRACT}
+Network intrusion detection produces data faster than a single server can store it, and a single database is a single point of failure: one crashed server, one mistaken \texttt{DROP DATABASE} or one failed disk destroys every detection result. This project builds a real-time network threat analytics pipeline on the CIC-IDS2017 benchmark (1,410,255 packet records, 1,505 columns) and, as its central contribution, makes it resilient to data loss using Big Data storage concepts.
+
+Historical records are replayed through a four-partition Apache Kafka topic into Spark Structured Streaming, where a hybrid detector combines fast metadata rules with a Spark MLlib model (PCA to 32 components followed by a Random Forest) that reads the 1,500 payload bytes. Every micro-batch is written twice, following the Lambda architecture: alerts and metrics go to a MongoDB cluster that is \emph{sharded} (two shards, hashed \texttt{\_id} shard key, \texttt{mongos} router, config server) and \emph{replicated} (each shard a three-member replica set), while every event is appended to an immutable Snappy-compressed Parquet data lake. A Spark SQL batch layer computes window trends and rollups from the lake, a backup manager takes SHA-256-verified snapshots with seven-day rotation, and a Streamlit dashboard shows alerts, batch analytics and cluster health.
+
+Three data-loss events were simulated on the running system. Killing a shard primary lost no data (60 of 60 writes accepted, worst stall about 10 s). Dropping the database was recovered from a verified snapshot in 1.1 s with identical document counts. Deleting the database \emph{and} all backups was recovered from the Parquet lake in 1.6 s with an identical set of alert identifiers. On the full dataset the hybrid detector raised recall from 67.67\% to 99.85\% (F1 from 80.15\% to 99.04\%) at the cost of a higher false-positive rate (3.43\% to 5.15\%). Hashed sharding balanced the alert collection to within 0.03\% (188,683 versus 188,642 documents). A suite of 106 automated tests passes.
+
+\end{justify}
+
+\begin{flushleft}
+\vspace{1cm}
+
+\textsl {\textbf {Keywords :} Big Data, Lambda architecture, Apache Kafka, Spark Structured Streaming, MongoDB sharding, replication, backup and disaster recovery, Parquet data lake, intrusion detection.}
+
+\end{flushleft}
+
+\pagenumbering{roman}

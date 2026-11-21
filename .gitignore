@@ -1,0 +1,92 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Streamlit secrets and local configs
+.streamlit/secrets.toml
+.env
+.env.*
+
+# Datasets and large raw data files
+*.csv
+*.tsv
+*.parquet
+*.jsonl
+*.gz
+*.zip
+*.tar
+data/*.csv
+!data/README.md
+
+# Kafka & Spark checkpoints, runtime state, and logs
+checkpoints/
+checkpoint/
+kraft-combined-logs/
+metastore_db/
+derby.log
+*.log
+logs/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Lambda-architecture runtime artefacts (data lake, backups, benchmark scratch, local venv)
+data/lake/
+data/lake_bench_*/
+data/tmp_bench/
+backups/
+.venv311/
+
+# Archived/old material, local only (never pushed)
+archive/
+.venv/
+
+# LaTeX build files
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.lof
+report/*.lot
+report/*.bbl
+report/*.blg
+report/*.fls
+report/*.fdb_latexmk
+
+# The trained demo model is small and required by the demo
+!models/
+!models/**

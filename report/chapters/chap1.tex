@@ -1,0 +1,42 @@
+\chapter{INTRODUCTION}
+
+\justify
+Modern networks generate millions of packet records per hour. Detecting hostile traffic in that stream is a Big Data problem in all three senses: the \emph{volume} is large, the \emph{velocity} requires results while the data is still arriving, and the \emph{variety} mixes structured header fields with raw payload bytes. Equally important, the results of that analysis are valuable evidence that must not be lost \cite{erl}.
+
+\section{Preamble}
+\justify
+This project implements a real-time network threat analytics pipeline. A historical intrusion dataset, CIC-IDS2017 \cite{cicids}, is replayed as a live stream through Apache Kafka \cite{kafka}, analysed by Spark Structured Streaming \cite{structuredstreaming}, stored in a sharded and replicated MongoDB cluster \cite{mongodb} together with an append-only Parquet data lake, and presented in a Streamlit security-operations dashboard. The dataset contains 1,410,255 records and 1,505 columns: four packet-header fields, one ground-truth label, and 1,500 payload bytes.
+
+The first version of the system was a one-way linear pipeline that worked end to end (6,383 records/s, 33 tests) but had a single MongoDB instance and no second copy of any data. The present work evolves it into a Lambda architecture \cite{lambda} whose main goal is \textbf{data-loss handling}, using the storage concepts of the Big Data Analytics course: sharding, replication, their combination, columnar file formats, batch versus stream processing, and window aggregation.
+
+\section{Motivation}
+\justify
+A review of the first version exposed five weaknesses. (A) All data flowed into one MongoDB instance, with no raw-event archive and no backup. (B) Kafka ran on one partition, capping ingestion at about 6,380 records/s. (C) The detector used only four metadata fields and four heuristic rules and therefore had 0\% recall on several application-layer attacks, ignoring 1,500 of the 1,505 columns. (D) There was no batch layer for historical analysis. (E) There was no disaster-recovery procedure.
+
+The project mentor's central concern was weakness A: \emph{if the database is lost, everything is lost}. This report therefore concentrates on storage resilience, and treats the other improvements as the supporting parts of a complete Lambda architecture.
+
+\section{Literature Study}
+\justify
+\textbf{Streaming.} Kafka \cite{kafka} provides a partitioned, replicated, durable log; Spark Structured Streaming \cite{structuredstreaming} treats a stream as an unbounded table processed in micro-batches with checkpointed offsets, which gives fault-tolerant, exactly-once-style semantics when sinks are idempotent \cite{maas}.
+
+\textbf{Lambda architecture.} Marz and Warren \cite{lambda} separate an immutable master dataset (batch layer), a low-latency incremental view (speed layer) and a query layer (serving layer). The immutable master dataset is what makes recovery from human error possible, because views can always be recomputed from it.
+
+\textbf{NoSQL storage.} Document stores scale out by \emph{sharding} (horizontal partitioning by a shard key) and gain availability by \emph{replication} (several copies kept consistent through a log) \cite{mongodb,erl}. The two are complementary: sharding splits data and write load, replication protects each part. Neither protects against a mistaken delete, because replicas copy the mistake; that requires backups.
+
+\textbf{Intrusion datasets.} CIC-IDS2017 \cite{cicids} labels benign and attack traffic (DoS, DDoS, brute force, web attacks, infiltration, botnet, port scan) and, in its payload variant, carries 1,500 payload bytes per packet.
+
+\section{Problem Definition}
+\justify
+Design and implement a streaming threat-analytics pipeline over the CIC-IDS2017 payload dataset such that (i) no single hardware failure, operator error or loss of backups causes permanent loss of detection results; (ii) the data tier can scale out across nodes; (iii) detection uses the payload bytes and not only header metadata; and (iv) the behaviour can be demonstrated, measured and tested on commodity hardware (an 8-core laptop with 7.5\,GB RAM).
+
+\section{Objectives of the project}
+\justify
+\begin{enumerate}[noitemsep]
+\item Implement tiered storage: a hot MongoDB tier and an immutable Parquet data lake written by a dual write from every micro-batch.
+\item Shard and replicate MongoDB (two shards $\times$ three replicas, hashed shard key, router, config server) and show that it survives node failure.
+\item Provide automated, verified, rotated backups of MongoDB, streaming checkpoints and the lake, and a way to rebuild MongoDB from the lake alone.
+\item Scale ingestion with a four-partition Kafka topic and keyed routing.
+\item Add a Spark MLlib payload model (PCA + Random Forest) to the rule-based detector without using labels at inference time.
+\item Add a Spark SQL batch layer with tumbling and sliding windows, and extend the dashboard with batch and system-health views.
+\item Demonstrate and measure three data-loss scenarios end to end.
+\end{enumerate}

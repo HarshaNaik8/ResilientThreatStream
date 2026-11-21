@@ -1,0 +1,11 @@
+# Real-Time Network Threat Analytics — Streaming Pipeline & Kafka Replay Dependencies
+# Required for running producer.py, spark_consumer.py, and evaluate_rules.py locally.
+
+kafka-python>=2.0.2
+pyspark==3.5.6
+pymongo>=4.6.0
+pandas>=2.0.0
+streamlit>=1.35.0
+plotly>=5.18.0
+numpy>=1.24
+pyarrow>=14.0

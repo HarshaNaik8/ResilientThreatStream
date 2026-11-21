@@ -1,0 +1,48 @@
+\chapter{TESTING}
+
+\paragraph{}
+Testing combined automated unit and integration tests, live end-to-end rehearsals against the running cluster, and destructive acceptance tests for data loss.
+
+\section{Test Plan and Test Cases}
+\subsection{Unit and integration tests}
+\paragraph{}
+The suite is run with \texttt{python -m unittest discover -s . -p "test\_*.py"} and contains \textbf{106 tests, all passing}: the 33 tests of the first version plus 73 new ones. Tests that need MongoDB are skipped automatically when it is not running.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{4.6cm}|c|p{7.3cm}|}
+\hline
+\textbf{Test file} & \textbf{Tests} & \textbf{What is checked} \\ \hline
+\texttt{test\_rules}, \texttt{test\_mongo\_sink}, \texttt{test\_consumer\_config}, \texttt{test\_dashboard} & 33 & Baseline rules, sink documents, consumer options, dashboard helpers (original suite) \\ \hline
+\texttt{test\_lake\_sink} & 8 & Parquet schema, Snappy, partition layout, append-only, read/write round trip, payload statistics \\ \hline
+\texttt{test\_producer\_keys} & 8 & Key strategies, even spread over 4 partitions, protocol-key skew, payload extraction \\ \hline
+\texttt{test\_ml\_payload} & 11 & Metrics, label is not a model input, inference does not read the label, hybrid OR logic, rule baseline \\ \hline
+\texttt{test\_batch\_analytics} & 9 & Tumbling windows partition events exactly, sliding windows overlap, rollup documents and idempotent persistence \\ \hline
+\texttt{test\_backup\_manager} & 11 & Backup, SHA-256 verification, corruption detection, rotation, restore, lake archive, DR drill \\ \hline
+\texttt{test\_sharding} & 8 & Replica-set configuration (3 data members, majority), shard keys, balance, routing, live cluster registration \\ \hline
+\texttt{test\_lake\_recovery} & 4 & Alerts rebuilt from the lake keep the same identifiers; batch metrics re-aggregation \\ \hline
+\texttt{test\_dashboard\_lambda} & 14 & Rollup queries, lake and backup status, Kafka lag, cluster status, graceful degradation \\ \hline
+\textbf{Total} & \textbf{106} & \\ \hline
+\end{tabular}
+\caption{Automated test suite}
+\end{table}
+
+\subsection{Acceptance tests for data loss}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{1.6cm}|p{3.8cm}|p{3.4cm}|p{4.2cm}|}
+\hline
+\textbf{Test} & \textbf{Action} & \textbf{Expected} & \textbf{Observed} \\ \hline
+A & \texttt{kill -9} on the primary of a shard & No data lost, writes continue & 60/60 writes accepted, stall 10.2\,s, 9,089/9,089 alerts intact, node re-synced \\ \hline
+B & Drop the whole database & Identical restore from snapshot & 9,139 documents restored in 1.1\,s, counts identical \\ \hline
+C & Drop database and delete all snapshots & Rebuild from the lake & 9,089 alerts re-created in 1.6\,s with identical identifier set \\ \hline
+Shard failover & Step down shard primary under write load & No client errors & 10,590 writes in 25\,s, 0 errors, worst stall 10.2\,s \\ \hline
+Routing & \texttt{explain()} of two queries & \texttt{\_id}: 1 shard; \texttt{run\_id}: 2 shards & 1 and 2 shards \\ \hline
+\end{tabular}
+\caption{Destructive acceptance tests (run \texttt{demo-run}: 12,000 events)}
+\end{table}
+
+\paragraph{}
+Two defects were found by these rehearsals and fixed: Spark Python workers used the system interpreter instead of the virtual environment, and the batch job's explicitly named index clashed with the shard-key index of the same fields.

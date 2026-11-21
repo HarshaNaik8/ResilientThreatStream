@@ -1,0 +1,72 @@
+\chapter{SOFTWARE REQUIREMENT SPECIFICATION}
+
+\paragraph{}
+This chapter lists what the system must do and the environment it needs. The system has two kinds of actors: the \emph{security analyst}, who uses the dashboard, and the \emph{operator}, who runs the pipeline, takes backups and recovers from failures.
+
+\section{Overview of SRS}
+\paragraph{}
+The system ingests network packet records as a stream, classifies each record as benign or attack, stores results durably, and lets the analyst explore them. Quality attributes of particular importance are durability (no loss of acknowledged results), availability (continued service when one node fails) and recoverability (restoring service after deletion).
+
+\section{Requirement Specifications}
+\paragraph{}
+Functional requirements describe the behaviour the system must provide; non-functional requirements describe the qualities and constraints of that behaviour.
+
+\subsection{Functional Requirements}
+\begin{itemize}[noitemsep]
+\item \textbf{FR1} Replay CSV records into a partitioned Kafka topic using a partition key, optionally including the 1,500 payload bytes.
+\item \textbf{FR2} Consume the topic with Spark Structured Streaming in micro-batches, tolerating malformed JSON.
+\item \textbf{FR3} Classify every valid record with metadata rules, and optionally with the MLlib payload model (hybrid verdict = rules OR ML).
+\item \textbf{FR4} Persist alerts and per-batch metrics to a sharded, replicated MongoDB cluster through idempotent upserts.
+\item \textbf{FR5} Append every valid event to a partitioned, Snappy-compressed Parquet data lake in the same micro-batch.
+\item \textbf{FR6} Compute batch rollups (tumbling and sliding windows, protocol, entropy, attack family, TTL heat map) from the lake into a MongoDB collection.
+\item \textbf{FR7} Take verified snapshots (database dump, streaming checkpoints, lake) and rotate them after seven days.
+\item \textbf{FR8} Restore the database from a snapshot, and rebuild alerts and metrics from the lake when snapshots are also lost.
+\item \textbf{FR9} Provide a dashboard with alert explorer, ground-truth evaluation, batch analytics and a system-health tab (backup status, lake size, Kafka lag, shard and replica status).
+\item \textbf{FR10} Provide scripts that simulate node crash, database deletion and loss of all backups, and report the outcome.
+\end{itemize}
+
+\subsection{Use case summary}
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{2.6cm}|p{3.2cm}|p{7.5cm}|}
+\hline
+\textbf{Actor} & \textbf{Use case} & \textbf{Main scenario} \\ \hline
+Operator & Run pipeline & Start services, replay records, Spark classifies and writes to shards and lake \\ \hline
+Analyst & Investigate alerts & Filter and page through stored alerts, view metrics and batch trends \\ \hline
+Operator & Back up & Dump database, archive checkpoints and lake, verify checksums, rotate \\ \hline
+Operator & Recover & Restore snapshot; if none exists, rebuild from the lake \\ \hline
+Operator & Check health & Read backup age, lake size, consumer lag, member states of each shard \\ \hline
+\end{tabular}
+\caption{Actors and use cases}
+\end{table}
+
+\subsection{Nonfunctional Requirements}
+\subsubsection{Performance requirements}
+Ingestion should exceed the 6,383 records/s of the first version when more partitions are used; dashboard pages should render from pre-computed rollups rather than scanning the lake.
+
+\subsubsection{Reliability and data-loss requirements}
+A single node failure must not lose or block acknowledged data; a deleted database must be recoverable from a verified backup; loss of database and backups together must still be recoverable from the lake.
+
+\subsubsection{Security and correctness requirements}
+Ground-truth labels must never be an input to detection (zero data leakage). Connection settings must resolve from Streamlit secrets, then environment variables, then a local default; no credentials are stored in the repository.
+
+\subsubsection{Usability}
+Every operation is a single script or \texttt{make} target; the dashboard degrades to ``N/A'' cards when Kafka, the lake or backups are not local (for example on Streamlit Cloud).
+
+\section{Software and Hardware requirement specifications}
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{4cm}|p{9cm}|}
+\hline
+\textbf{Item} & \textbf{Specification} \\ \hline
+Hardware used & 8-core CPU laptop, 7.5\,GB RAM, SSD; an NVIDIA GTX 1650 is present but not used (Spark MLlib is CPU-only) \\ \hline
+Operating system & Ubuntu 26.04 \\ \hline
+Java / Python & OpenJDK 17; Python 3.11 virtual environment (PySpark 3.5.6 does not support Python 3.14) \\ \hline
+Apache Kafka & 4.3.1, KRaft mode, topic with 4 partitions \\ \hline
+Apache Spark & 3.5.6 (Structured Streaming, MLlib, Spark SQL), local mode \\ \hline
+MongoDB & 8.0.4 sharded cluster: 1 config server, 2 shards $\times$ 3 members, 1 \texttt{mongos}; database tools 100.10 \\ \hline
+Python libraries & kafka-python, pymongo, pyarrow, pandas, streamlit, plotly \\ \hline
+Dataset & CIC-IDS2017 payload CSV, 4.91\,GB, 1,410,255 records \\ \hline
+\end{tabular}
+\caption{Software and hardware environment}
+\end{table}
