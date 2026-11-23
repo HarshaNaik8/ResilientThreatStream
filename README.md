@@ -66,26 +66,12 @@ The first version of this project was a working one-way pipeline (CSV → Kafka 
 
 ## 2. Architecture
 
-```
-CSV replay ──► producer.py (key = flow hash, optional 1,500-byte payload)
-                   │
-                   ▼
-           Apache Kafka  topic network-records-*  (4 partitions)
-                   │
-                   ▼
-   Spark Structured Streaming  ── SPEED LAYER ─────────────────────────────┐
-     rules (metadata)  OR  MLlib PCA(32)+RandomForest (payload)            │
-     foreachBatch DUAL WRITE                                               │
-        ├─► Sharded MongoDB (hot)   threat_alerts, batch_metrics           │
-        └─► Parquet data lake (cold, immutable master dataset)             │
-                   │                                                       │
-   batch_analytics.py (Spark SQL on the lake) ── BATCH LAYER               │
-        └─► historical_threat_rollups (MongoDB)  ── SERVING LAYER ─────────┤
-                                                                           ▼
-   Streamlit SOC dashboard  (alerts · evaluation · batch trends · system health)
+![Architecture](docs/images/architecture.png)
 
-   backup_manager.py: mongodump.gz + Spark checkpoints + lake, SHA-256 verified, 7-day rotation
-```
+*Lambda architecture: every micro-batch is written twice (hot sharded MongoDB, cold Parquet lake); four independent defences protect against data loss.*
+
+Sharded cluster detail:
+
 
 ```
  clients ──► mongos :27019 ──► config server :27100
