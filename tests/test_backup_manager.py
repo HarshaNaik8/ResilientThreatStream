@@ -171,5 +171,23 @@ class DrillTests(unittest.TestCase):
             c.close()
 
 
+class ToolConfigTests(unittest.TestCase):
+    def test_uri_goes_to_private_temp_file_not_argv(self):
+        uri = "mongodb://user:s3cret@localhost:27017/?authSource=admin"
+        with bm.tool_config(uri) as arg:
+            self.assertTrue(arg.startswith("--config="))
+            self.assertNotIn("s3cret", arg)
+            path = arg.split("=", 1)[1]
+            self.assertEqual(oct(os.stat(path).st_mode & 0o777), "0o600")
+            self.assertIn("s3cret", open(path).read())
+        self.assertFalse(os.path.exists(path))          # removed afterwards
+
+    def test_spark_consumer_log_redaction(self):
+        from spark_consumer import redact_mongo_uri
+        out = redact_mongo_uri("mongodb://user:s3cret@h1:27017,h2:27018/?replicaSet=x")
+        self.assertEqual(out, "h1:27017,h2:27018")
+        self.assertNotIn("s3cret", redact_mongo_uri("not a uri s3cret"))
+
+
 if __name__ == "__main__":
     unittest.main()

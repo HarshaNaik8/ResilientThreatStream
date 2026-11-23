@@ -28,7 +28,7 @@ Kafka → Spark Structured Streaming (rules + MLlib) → **sharded & replicated 
 | **Dataset** | CIC-IDS2017 payload variant: 1,410,255 records, 1,505 columns (4 header fields, 1 label, 1,500 payload bytes) |
 | **Stack** | Apache Kafka 4.3.1 (KRaft) · Apache Spark 3.5.6 (Structured Streaming, MLlib, SQL) · MongoDB 8.0.4 (sharded) · Parquet · Streamlit |
 | **Focus** | Data-loss handling and backup using Big Data storage concepts: sharding, replication, immutable lake, snapshots |
-| **Tests** | 106 unit/integration tests pass |
+| **Tests** | 108 unit/integration tests pass |
 
 ---
 
@@ -142,7 +142,7 @@ Both shards run on one laptop, so sharding demonstrates distribution, routing an
 ├── evaluate_rules.py        Offline evaluation of the baseline rules
 ├── dashboard.py / dashboard_utils.py   Streamlit SOC dashboard
 ├── scripts/                 Operations: install, start, shard cluster, backup, recovery, demo
-├── tests/                   106 unit/integration tests
+├── tests/                   108 unit/integration tests
 ├── tools/                   Dataset helpers (sampling, validation, inspection)
 ├── models/payload_rf/       Trained MLlib pipeline used by the demo
 ├── docs/                    Explanation, demo guide, architecture references, benchmarks
@@ -292,7 +292,7 @@ Settings resolve in this order: Streamlit `st.secrets` → environment variable 
 ## 10. Tests
 
 ```bash
-make test        # = .venv311/bin/python -m unittest discover -s . -p "test_*.py"   (106 tests)
+make test        # = .venv311/bin/python -m unittest discover -s . -p "test_*.py"   (108 tests)
 ```
 Tests that need MongoDB skip themselves when it is not running. Covered: rules, sinks, Parquet lake, keyed routing, ML (including "label is never a model input"), batch analytics, backups (corruption detection, rotation, restore), sharding configuration, lake recovery, dashboard helpers.
 

@@ -28,6 +28,15 @@ from ml_payload_detector import (
 )
 
 
+def redact_mongo_uri(uri: str) -> str:
+    """Host list only (never credentials/options) so URIs with passwords are safe to log."""
+    try:
+        from pymongo.uri_parser import parse_uri
+        return ",".join(f"{h}:{p}" for h, p in parse_uri(uri)["nodelist"])
+    except Exception:
+        return "<unparseable URI hidden>"
+
+
 def create_schema():
     """Define the expected JSON schema for network records, including corrupt record capture."""
     return StructType([
@@ -315,7 +324,7 @@ def main():
     print(f"[SparkConsumer] Ingesting from Kafka topic '{args.topic}' at '{args.bootstrap}'...")
     print(f"[SparkConsumer] Starting offsets: '{args.starting_offsets}' | Trigger: '{args.trigger_interval}' | Max offsets/trigger: {args.max_offsets_per_trigger:,}")
     print(f"[SparkConsumer] Checkpoint path: '{args.checkpoint_dir}'")
-    print(f"[SparkConsumer] MongoDB URI: '{args.mongo_uri}' | Database: '{args.mongo_db}'")
+    print(f"[SparkConsumer] MongoDB hosts: {redact_mongo_uri(args.mongo_uri)} | Database: '{args.mongo_db}'")
     print(f"[SparkConsumer] Run ID: '{run_id}'")
 
     raw_stream = (

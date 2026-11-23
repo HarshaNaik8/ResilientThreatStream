@@ -116,7 +116,7 @@ This is the **Lambda architecture**: speed layer (streaming), batch layer (lake 
 | ML caveats | PCA(32) keeps 74.2% of variance (not 95%; k=128 reaches 81.9% with no gain); trained on a 10k sample (about 0.6% overlap with the full run); CIC-IDS2017 attacks are very separable, so live traffic will score lower |
 | Kafka 1 -> 4 partitions (420k records, with lake dual-write) | 9,635 -> 12,889 rec/s (+34%); the 20,000 rec/s target was **not** reached on this laptop |
 | Parquet vs CSV | 3.98x smaller, about 11x faster single-column scan |
-| Tests | 106 unit/integration tests pass (`make test`) |
+| Tests | 108 unit/integration tests pass (`make test`) |
 
 ## 8. Likely mentor questions
 
@@ -140,5 +140,5 @@ This is the **Lambda architecture**: speed layer (streaming), batch layer (lake 
 | `scripts/backup_manager.py`, `scripts/dr_drill.py`, `scripts/lake_recovery.py`, `scripts/data_loss_demo.py` | Backup, drill, lake recovery, the three scenarios |
 | `scripts/start_services.sh`, `scripts/demo_env.sh`, `scripts/reset_demo.sh` | Start everything / demo environment / clean slate |
 | `dashboard.py`, `dashboard_utils.py` | Streamlit SOC dashboard |
-| `tests/` | 106 tests |
+| `tests/` | 108 tests |
 | `docs/` | This file, `DEMO_GUIDE.md`, architecture references, the PPT |

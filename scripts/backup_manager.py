@@ -34,6 +34,8 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -69,6 +71,25 @@ def find_tool(name: str) -> Optional[str]:
     return None
 
 
+@contextmanager
+def tool_config(mongo_uri: str):
+    """
+    Give mongodump/mongorestore the connection URI through a 0600 temp --config file instead of
+    --uri, so credentials never appear in the process list.  The file is always deleted.
+    """
+    fd, path = tempfile.mkstemp(prefix="mongo_tool_", suffix=".yml")
+    try:
+        os.chmod(path, 0o600)
+        with os.fdopen(fd, "w") as fh:
+            fh.write("uri: " + json.dumps(mongo_uri) + "\n")     # JSON string is valid YAML
+        yield f"--config={path}"
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 def parse_snapshot_time(name: str) -> Optional[datetime]:
     try:
         return datetime.strptime(name, TS_FORMAT).replace(tzinfo=timezone.utc)
@@ -99,10 +120,11 @@ def dump_mongo(mongo_uri: str, db_name: str, out_dir: str, use_mongodump: bool =
         tool = find_tool("mongodump") if use_mongodump else None
         if tool:
             path = os.path.join(out_dir, "mongo.archive.gz")
-            subprocess.run([tool, f"--uri={mongo_uri}", f"--db={db_name}",
-                            f"--archive={path}", "--gzip", "--quiet",
-                            f"--readPreference={read_preference}"],      # default: dump from a secondary, no load on the primary
-                           check=True, capture_output=True, text=True)
+            with tool_config(mongo_uri) as cfg:
+                subprocess.run([tool, cfg, f"--db={db_name}",
+                                f"--archive={path}", "--gzip", "--quiet",
+                                f"--readPreference={read_preference}"],  # default: dump from a secondary, no load on the primary
+                               check=True, capture_output=True, text=True)
             return {"file": os.path.basename(path), "method": "mongodump", "collections": counts}
         from bson import json_util
         path = os.path.join(out_dir, "mongo.jsonl.gz")
@@ -243,13 +265,18 @@ def restore_snapshot(snap: str, mongo_uri: str, db_name: str, restore_checkpoint
             tool = find_tool("mongorestore")
             if not tool:
                 raise RuntimeError("mongorestore not found (set MONGO_TOOLS_DIR)")
-            cmd = [tool, f"--uri={mongo_uri}", f"--archive={p}", "--gzip",
+            cfg_cm = tool_config(mongo_uri)
+            cfg = cfg_cm.__enter__()
+            cmd = [tool, cfg, f"--archive={p}", "--gzip",
                    f"--nsInclude={manifest['database']}.*"]
             if manifest["database"] != db_name:
                 cmd += [f"--nsFrom={manifest['database']}.*", f"--nsTo={db_name}.*"]
             if drop:
                 cmd.append("--drop")
-            subprocess.run(cmd, check=True)
+            try:
+                subprocess.run(cmd, check=True)
+            finally:
+                cfg_cm.__exit__(None, None, None)
         elif name.endswith(".jsonl.gz"):
             from bson import json_util
             from pymongo import MongoClient
